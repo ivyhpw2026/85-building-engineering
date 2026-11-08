@@ -1,0 +1,177 @@
+<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>85大樓工程管理 Web V2.1</title><style>body{margin:0;font-family:'Microsoft JhengHei',sans-serif;background:#edf2f8;color:#1c3855}.login{max-width:490px;margin:8vh auto;background:white;padding:32px;border-radius:12px;border:1px solid #dae3ed}input,button{font:inherit;padding:10px;margin:6px 0;border-radius:6px;border:1px solid #c4d1df}button{background:#1766a3;color:white;cursor:pointer;border:0}input{width:95%}.error{color:#b32626}.toolbar{background:#193d5d;color:white;padding:10px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px}.toolbar button{background:#376a92}.admin-btn{display:none}.admin-panel{display:none;position:fixed;inset:72px 0 0;background:#edf2f8;z-index:9;overflow:auto;padding:24px;box-sizing:border-box}.admin-panel.open{display:block}.admin-card{max-width:1040px;margin:auto;background:white;border:1px solid #dae3ed;border-radius:12px;padding:24px}.admin-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px}.admin-panel input{width:100%;box-sizing:border-box}.admin-panel label{display:block;margin:10px 0}.admin-panel button{margin-right:8px}.admin-panel .secondary{background:#64748b}.admin-panel .note{color:#65768b;font-size:13px}.admin-panel .result{white-space:pre-wrap;background:#f3f7fc;padding:12px;border-radius:6px;min-height:30px}.admin-panel input[type=checkbox]{width:auto;margin-right:8px}.admin-panel select{width:100%;box-sizing:border-box;padding:10px;border:1px solid #c4d1df;border-radius:6px;background:white}.site-manager{background:#f8fbff;padding:14px;border-radius:8px;border:1px solid #dbe4ee}.member-row{display:flex;align-items:center;gap:8px;border-bottom:1px solid #dbe4ee;padding:7px}.member-row .pickEmployee{margin-left:auto}.member-row small{color:#5d7085}.admin-panel button:disabled{opacity:.5;cursor:not-allowed}.banner{background:#fff4d5;color:#735010;padding:8px 18px;font-size:13px}iframe{width:100%;height:calc(100vh - 94px);border:0;display:block}#app{display:none}</style></head><body><section class="login" id="login"><h2>85大樓工程管理系統 V2.1</h2><p>Supabase 測試環境｜V1.44 原版介面</p><form id="form"><input type="email" id="email" placeholder="登入電子郵件" required autocomplete="username"><input type="password" id="password" placeholder="密碼" required autocomplete="current-password"><button type="submit">登入</button></form><p id="err" class="error"></p></section><section id="app"><div class="toolbar"><b>85大樓工程管理系統 V2.1　<small>V1.44 原版 UI</small></b><span><span id="who"></span>　<button id="adminToggle" class="admin-btn" type="button">系統管理／權限設定</button> <label style="font-size:13px">目前工地 <select id="activeSite" style="max-width:220px;padding:7px;background:white;color:#183d5d;border-radius:6px"></select></label> <button id="reload">重新讀取</button> <button id="logout">登出</button></span></div><div class="banner" id="status">測試環境：只讀取 Supabase 工項，不匯入或覆蓋正式資料；新增、修改、每日填報與異常簽核尚未開放。</div><iframe id="legacy" title="工程管理系統原版介面" src="legacy_v144_web.html?v=20261108-bridge-fix"></iframe><section id="adminPanel" class="admin-panel" aria-label="系統管理"><div class="admin-card"><h2>系統管理／工地成員與功能權限</h2><p class="note">從既有員工主檔選取，不會重複新增員工；可從既有員工主檔批次選取；TEST-85 與正式 85 大樓保持分離。</p><div class="site-manager"><h3>工地管理</h3><div class="admin-grid"><div><label for="siteSelect">目前工地</label><select id="siteSelect" aria-label="目前工地"></select><button id="refreshSites" type="button">重新讀取工地</button></div><div><label for="newSiteCode">新增工地代碼（英文或數字）</label><input id="newSiteCode" placeholder="例如：BUILDING-85"><label for="newSiteName">工地名稱</label><input id="newSiteName" placeholder="例如：85大樓（正式）"><button id="createSite" type="button">新增工地</button></div></div><p class="note">TEST-85 為測試專案，正式 85 大樓需另外建立；新增工地不會複製工程資料。</p></div><hr><div class="admin-grid"><div><label for="memberSearch">搜尋既有員工</label><input id="memberSearch" placeholder="員工編號、姓名或角色"><button id="loadEmployees" type="button">讀取員工主檔</button></div><div><h3>員工清單</h3><div id="employeeList" class="result">尚未載入</div><p><button id="selectAllEmployees" type="button">全選搜尋結果</button><button id="clearEmployees" class="secondary" type="button">清除勾選</button></p><p id="selectedCount" class="note">已勾選 0 位</p><button id="batchAdd" type="button">批次加入目前工地</button></div></div><hr><p class="note">TEST-85 測試專案。僅經 Supabase 驗證的 project_admin 可進入；所有授權修改仍由資料庫 RPC 再次驗證。</p><div class="admin-grid"><div><label for="employeeNo">員工編號</label><input id="employeeNo" maxlength="12" placeholder="例如：070069"><button id="readMember" type="button">查詢員工授權</button></div><div><h3>工地成員狀態</h3><label><input id="memberActive" type="checkbox">啟用此員工的工地成員資格</label><button id="saveMember" type="button">儲存成員狀態</button></div></div><h3>功能授權</h3><div id="permissionChecks" class="admin-grid"></div><p><button id="savePerms" type="button">儲存功能權限</button><button id="closeAdmin" type="button" class="secondary">返回原版介面</button></p><p class="note">授權前請先確認員工編號；停用工地成員後即使保留功能勾選，也不能使用該工地。此版不提供帳號密碼重設或角色更改。</p><div id="adminResult" class="result" role="status">請先輸入員工編號，按「查詢員工授權」。</div></div></section></section><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script><script src="config.js?v=20261107-members1"></script><script>
+const C=window.ENGINEERING_CONFIG||{};let client,rows=[],ready=false,isAdmin=false,canEdit=false;let currentProjectId=null,projectsCache=[],memberLoadedKey=null,employeeDirectory=[],selectedEmployees=new Set();const el=id=>document.getElementById(id);function msg(s){el('status').textContent=s}function bridgeTarget(){return location.protocol==='file:'?'*':location.origin}
+function bridgeTrusted(e){return e.source===el('legacy').contentWindow&&(location.protocol==='file:'?e.origin==='null':e.origin===location.origin)}
+function send(){if(currentProjectId&&el('legacy').contentWindow){el('legacy').contentWindow.postMessage({type:'ENGINEERING_DATA',tasks:rows,canEdit,history:[],projectId:currentProjectId,projectName:projectLabel(),projectCode:(projectsCache.find(x=>(x.project_id||x.id)===currentProjectId)||{}).project_code||''},bridgeTarget())}}
+window.addEventListener('message',e=>{if(bridgeTrusted(e)&&e.data?.type==='ENGINEERING_READY'){ready=true;send()}});
+el('legacy').addEventListener('load',()=>{ready=false;send()});
+
+let loadSerial=0;
+async function load(){const serial=++loadSerial;msg('正在讀取 Supabase 專案資料…');const {data:projects,error:pErr}=await client.rpc('engineering_my_projects');if(pErr)throw pErr;projectsCache=Array.isArray(projects)?projects:[];if(!projectsCache.length)throw Error('帳號沒有任何工地權限');if(!projectsCache.some(p=>(p.project_id||p.id)===currentProjectId))currentProjectId=(projectsCache.find(p=>(p.project_id||p.id)===C.testProjectId)||projectsCache[0]).project_id||projectsCache[0].id;const id=currentProjectId;const picker=el('activeSite');picker.innerHTML=projectsCache.map(p=>`<option value="${escapeHtml(p.project_id||p.id)}">${escapeHtml((p.project_code||p.code||'')+'｜'+(p.project_name||p.name||''))}</option>`).join('');picker.value=id;const [{data:allowed,error:permErr},{data:admin},{data:dash},{data:taskPerm},{data:dailyPerm}]=await Promise.all([client.rpc('engineering_has_permission',{p_project_id:id,p_permission_code:'report_view'}),client.rpc('engineering_has_permission',{p_project_id:id,p_permission_code:'project_admin'}),client.rpc('engineering_has_permission',{p_project_id:id,p_permission_code:'chairman_dashboard'}),client.rpc('engineering_has_permission',{p_project_id:id,p_permission_code:'task_manage'}),client.rpc('engineering_has_permission',{p_project_id:id,p_permission_code:'daily_progress'})]);isAdmin=admin===true;canEdit=taskPerm===true||dailyPerm===true||isAdmin;el('adminToggle').style.display=isAdmin?'inline-block':'none';if(!isAdmin)el('adminPanel').classList.remove('open');if(permErr||!(allowed||admin||dash||dailyPerm||taskPerm))throw Error('此工地沒有工程查閱權限');const {data,error}=await client.from('engineering_tasks').select('id,legacy_id,project_id,floor,area,vendor,trade,owner,internal_owner,progress,baseline,forecast,plan_start,actual_start,actual_end,issue_category,issue,issue_due,daily,note,closed,cancelled,deleted_at').eq('project_id',id).is('deleted_at',null).order('area');if(error)throw error;if(serial!==loadSerial||id!==currentProjectId)return;rows=data||[];send();msg(projectLabel()+'｜已從 Supabase 讀取 '+rows.length+' 筆工項｜逐筆儲存與查閱依資料庫權限開放');}
+
+
+// TEST-85 cloud attachment bridge. File objects are transferred to the parent page, never to localStorage.
+const ATTACH_BUCKET='engineering-attachments';
+async function sendAttachmentList(taskId){
+ if(!currentProjectId||!rows.some(t=>String(t.id)===String(taskId)&&t.project_id===currentProjectId))throw Error('工項不屬於目前工地，請重新讀取後再試');
+ const {data,error}=await client.from('engineering_attachments')
+   .select('id,task_id,storage_path,original_name,content_type,size_bytes,created_at,photo_kind')
+   .eq('project_id',currentProjectId).eq('task_id',taskId).order('created_at',{ascending:false});
+ if(error)throw error;
+ const items=await Promise.all((data||[]).map(async a=>{
+  if(!String(a.content_type||'').startsWith('image/'))return {...a,preview_url:null};
+  const {data:signed,error:signError}=await client.storage.from(ATTACH_BUCKET).createSignedUrl(a.storage_path,600);
+  return {...a,preview_url:signError?null:signed?.signedUrl||null};
+ }));
+ el('legacy').contentWindow.postMessage({type:'ENGINEERING_ATTACH_LIST',taskId,items},bridgeTarget());
+}
+window.addEventListener('message',async e=>{
+ if(!bridgeTrusted(e)||!['ENGINEERING_ATTACH_LIST_REQUEST','ENGINEERING_ATTACH_UPLOAD','ENGINEERING_ATTACH_OPEN','ENGINEERING_ATTACH_DELETE'].includes(e.data?.type))return;
+ const q=e.data;
+ const requestProjectId=currentProjectId;
+ const reply=(ok,message)=>el('legacy').contentWindow.postMessage({type:'ENGINEERING_ATTACH_RESULT',requestId:q.requestId,ok,message},bridgeTarget());
+ try{
+  if(!requestProjectId||requestProjectId!==currentProjectId||!rows.some(t=>String(t.id)===String(q.taskId)&&t.project_id===requestProjectId))throw Error('工項不屬於目前工地，請重新讀取後再試');
+  if(q.type==='ENGINEERING_ATTACH_LIST_REQUEST'){await sendAttachmentList(q.taskId);return;}
+  if(q.type==='ENGINEERING_ATTACH_OPEN'){
+   const {data:items,error:readErr}=await client.from('engineering_attachments').select('storage_path').eq('project_id',currentProjectId).eq('task_id',q.taskId).eq('id',q.attachmentId).limit(1);
+   if(readErr||!items?.length)throw Error('找不到附件或沒有查看權限');
+   const {data,error}=await client.storage.from(ATTACH_BUCKET).createSignedUrl(items[0].storage_path,60);
+   if(error)throw error;
+   // Signed URLs are short lived. Open only in response to user click.
+   GenOpen(data.signedUrl);reply(true,'已開啟附件');return;
+  }
+  if(!canEdit)throw Error('沒有附件管理權限');
+  if(q.type==='ENGINEERING_ATTACH_UPLOAD'){
+   const f=q.file;
+   if(!(f instanceof File||f instanceof Blob)||f.size>8*1024*1024||f.size===0)throw Error('檔案大小須介於 1B 至 8MB');
+   const name=String(q.filename||'attachment').slice(0,180);
+   const ext=(name.match(/\.(jpg|jpeg|png|webp|gif|pdf|txt|doc|docx|xls|xlsx)$/i)||[])[1];
+   if(!ext)throw Error('不支援此副檔名');
+   const path=`${currentProjectId}/${q.taskId}/${crypto.randomUUID()}.${ext.toLowerCase()}`;
+   const {error:upErr}=await client.storage.from(ATTACH_BUCKET).upload(path,f,{contentType:f.type||'application/octet-stream',upsert:false});
+   if(upErr)throw upErr;
+   const {error:metaErr}=await client.from('engineering_attachments').insert({project_id:currentProjectId,task_id:q.taskId,storage_path:path,original_name:name,content_type:f.type||'',size_bytes:f.size,photo_kind:q.photoKind==='issue'?'issue':'daily'});
+   if(metaErr){await client.storage.from(ATTACH_BUCKET).remove([path]);throw metaErr;}
+   await sendAttachmentList(q.taskId);reply(true,'附件已儲存至 Supabase');return;
+  }
+  if(q.type==='ENGINEERING_ATTACH_DELETE'){
+   const {data:items,error:readErr}=await client.from('engineering_attachments').select('storage_path').eq('project_id',currentProjectId).eq('task_id',q.taskId).eq('id',q.attachmentId).limit(1);
+   if(readErr||!items?.length)throw Error('找不到附件');
+   const {error:removeErr}=await client.storage.from(ATTACH_BUCKET).remove([items[0].storage_path]);
+   if(removeErr)throw removeErr;
+   const {error:metaErr}=await client.from('engineering_attachments').delete().eq('id',q.attachmentId).eq('project_id',currentProjectId).eq('task_id',q.taskId);
+   if(metaErr)throw Error('檔案已移除，但資料庫紀錄刪除失敗，請通知管理員：'+metaErr.message);
+   await sendAttachmentList(q.taskId);reply(true,'附件已刪除');return;
+  }
+ }catch(err){reply(false,err.message||String(err));}
+});
+function GenOpen(url){window.open(url,'_blank','noopener,noreferrer')}
+
+window.addEventListener('message',async e=>{
+ if(!bridgeTrusted(e)||e.data?.type!=='ENGINEERING_TASK_SAVE')return;
+ const q=e.data,reply=(success,error)=>el('legacy').contentWindow.postMessage({type:'ENGINEERING_WRITE_RESULT',requestId:q.requestId,success,error},bridgeTarget());
+ try{
+  if(!canEdit||!currentProjectId)throw Error('無工項修改權限');
+  if(q.dbId && !rows.some(r=>r.id===q.dbId))throw Error('工項不屬於目前工地');
+  const allowed=['floor','area','vendor','trade','owner','internalOwner','planStart','forecast','actualStart','actualEnd','progress','daily','issueCategory','issue','issueDue','note'];
+  const payload={};const map={internalOwner:'internal_owner',planStart:'plan_start',actualStart:'actual_start',actualEnd:'actual_end',issueCategory:'issue_category',issueDue:'issue_due'};
+  for(const k of allowed){if(!Object.hasOwn(q.changes,k))continue;const dbk=map[k]||k;let v=q.changes[k];if(['planStart','forecast','actualStart','actualEnd','issueDue'].includes(k))v=v||null;payload[dbk]=v;}
+  const creating=!q.dbId;
+  if(creating){
+   if(!String(payload.floor||'').trim()||!String(payload.area||'').trim()||!String(payload.trade||'').trim())throw Error('新增工項須填寫樓層、施工區域及工種');
+   payload.baseline=q.changes.baseline||null;
+  }
+  const {data,error}=creating
+   ? await client.rpc('engineering_create_task_v2',{p_project_id:currentProjectId,p_task:payload})
+   : await client.rpc('engineering_update_task_v2',{p_project_id:currentProjectId,p_task_id:q.dbId,p_patch:payload,p_reason:q.reason||''});
+  if(error)throw Error(error.message);
+  reply(true,'');await load();
+ }catch(err){reply(false,err.message);}
+});
+
+// Daily versions: TEST-85 only. Database RPC enforces employee role, project, immutable snapshots.
+window.addEventListener('message',async e=>{
+ if(!bridgeTrusted(e)||!['ENGINEERING_DAILY_SUBMIT','ENGINEERING_DAILY_VERSIONS','ENGINEERING_DAILY_DETAIL'].includes(e.data?.type))return;
+ const q=e.data,kind=q.type;
+ const reply=(type,payload)=>el('legacy').contentWindow.postMessage({type,...payload},bridgeTarget());
+ try{
+  if(!currentProjectId)throw Error('尚未選擇工地');
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(q.date||''))throw Error('填報日期不正確');
+  if(kind==='ENGINEERING_DAILY_SUBMIT'){
+   const {data,error}=await client.rpc('engineering_submit_daily_latest_v3',{p_project_id:currentProjectId,p_report_date:q.date,p_reason:q.reason||''});
+   if(error)throw error;
+   const result=Array.isArray(data)?data[0]:data;
+   const versionNo=Number(result?.version_no),taskCount=Number(result?.task_count);
+   if(!Number.isInteger(versionNo)||versionNo<1||!Number.isInteger(taskCount)||taskCount<1){
+    throw Error('提交函式已回應，但回傳版本號或快照筆數格式不正確；請先查核資料庫，勿重複提交。');
+   }
+   reply('ENGINEERING_DAILY_SUBMIT_RESULT',{success:true,version_no:versionNo,task_count:taskCount});
+  }else if(kind==='ENGINEERING_DAILY_VERSIONS'){
+   const {data,error}=await client.from('engineering_daily_latest').select('version_no,submitted_by,submitted_at,task_count').eq('project_id',currentProjectId).eq('report_date',q.date).order('version_no',{ascending:false});
+   if(error)throw error;
+   reply('ENGINEERING_DAILY_VERSION_RESULT',{date:q.date,versions:data||[]});
+  }else{
+   const {data,error}=await client.from('engineering_daily_latest').select('report_date,version_no,submitted_by,submitted_at,snapshot').eq('project_id',currentProjectId).eq('report_date',q.date).eq('version_no',q.version_no).single();
+   if(error)throw error;
+   reply('ENGINEERING_DAILY_DETAIL_RESULT',{detail:data});
+  }
+ }catch(err){
+  const error=err.message||String(err);
+  if(kind==='ENGINEERING_DAILY_SUBMIT')reply('ENGINEERING_DAILY_SUBMIT_RESULT',{success:false,error});
+  else if(kind==='ENGINEERING_DAILY_VERSIONS')reply('ENGINEERING_DAILY_VERSION_RESULT',{date:q.date,error});
+  else reply('ENGINEERING_DAILY_DETAIL_RESULT',{error});
+ }
+});
+
+async function signedIn(user){el('login').style.display='none';el('app').style.display='block';el('who').textContent=user.email||'';try{await load()}catch(e){msg('讀取失敗：'+e.message)}}
+async function init(){if(!C.supabaseUrl||!C.supabaseAnonKey||!window.supabase){el('err').textContent='設定檔或 Supabase SDK 未載入';return}client=window.supabase.createClient(C.supabaseUrl,C.supabaseAnonKey);const {data:{session}}=await client.auth.getSession();if(session)await signedIn(session.user);client.auth.onAuthStateChange((event)=>{if(event==='SIGNED_OUT'){el('app').style.display='none';el('login').style.display='block';rows=[];isAdmin=false;el('adminToggle').style.display='none';el('adminPanel').classList.remove('open')}})}
+el('form').onsubmit=async e=>{e.preventDefault();el('err').textContent='登入中…';if(!client)return;const {data,error}=await client.auth.signInWithPassword({email:el('email').value.trim(),password:el('password').value});if(error){el('err').textContent=error.message;return}el('err').textContent='';await signedIn(data.user)};el('logout').onclick=()=>client?.auth.signOut();el('activeSite').onchange=async()=>{const old=currentProjectId;currentProjectId=el('activeSite').value;rows=[];send();try{await load()}catch(err){currentProjectId=old;await load();alert('切換工地失敗：'+err.message)}};el('reload').onclick=async()=>{try{await load()}catch(e){msg('讀取失敗：'+e.message)}};
+const employeeList=el('employeeList');
+function escapeHtml(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+const ROLE_NAMES={admin:'系統管理員',gm_approver:'專案管理人',task_manager:'工項管理人',daily_reporter:'每日填報人',viewer:'查閱人員'};
+const EMPLOYEE_NAMES={'001688':'莊自立','040366':'李日順','046066':'洪于茹','052177':'張文蘋','057542':'李魁雄','070069':'宋宗龍','072596':'洪睿懋'};
+function displayName(e){return e.display_name||EMPLOYEE_NAMES[e.employee_no]||'（姓名待主檔同步）'}
+function employeeFiltered(){const q=el('memberSearch').value.trim().toLowerCase();return employeeDirectory.filter(e=>(e.employee_no+' '+displayName(e)+' '+(e.role_code||'')+' '+(ROLE_NAMES[e.role_code]||'')).toLowerCase().includes(q))}
+function renderEmployees(){const filtered=employeeFiltered();employeeList.innerHTML=filtered.length?filtered.map(e=>`<div class="member-row"><input type="checkbox" class="employeeSelect" data-no="${escapeHtml(e.employee_no)}" ${selectedEmployees.has(e.employee_no)?'checked':''}><b>${escapeHtml(e.employee_no)}</b><span>${escapeHtml(displayName(e))}</span><small>${escapeHtml(ROLE_NAMES[e.role_code]||'未知角色')} (${escapeHtml(e.role_code||'')})${e.active===false?'｜停用':''}</small><button type="button" class="pickEmployee" data-no="${escapeHtml(e.employee_no)}">查詢</button></div>`).join(''):'沒有符合的員工';employeeList.querySelectorAll('.employeeSelect').forEach(b=>b.onchange=()=>{if(b.checked)selectedEmployees.add(b.dataset.no);else selectedEmployees.delete(b.dataset.no);updateCount()});employeeList.querySelectorAll('.pickEmployee').forEach(b=>b.onclick=()=>{el('employeeNo').value=b.dataset.no;el('readMember').click()});updateCount()}
+function updateCount(){el('selectedCount').textContent=`已勾選 ${selectedEmployees.size} 位員工`}
+el('memberSearch').oninput=renderEmployees;
+el('selectAllEmployees').onclick=()=>{employeeFiltered().filter(e=>e.active!==false).forEach(e=>selectedEmployees.add(e.employee_no));renderEmployees()};
+el('clearEmployees').onclick=()=>{selectedEmployees.clear();renderEmployees()};
+el('loadEmployees').onclick=()=>adminAction(async()=>{const result=await adminCall('engineering_admin_list_employees',{});employeeDirectory=Array.isArray(result)?result:[];renderEmployees();adminMessage(`已載入 ${employeeDirectory.length} 位既有員工。可複選後批次加入目前工地。`)});
+function projectId(){if(!currentProjectId)throw Error('請先選擇工地');return currentProjectId}
+function projectLabel(){const p=projectsCache.find(x=>(x.project_id||x.id)===currentProjectId);return p?(p.project_name||p.name||p.project_code||p.code||currentProjectId):currentProjectId}
+async function loadSites(){const d=await adminCall('engineering_my_projects',{});projectsCache=Array.isArray(d)?d:[];const select=el('siteSelect');select.innerHTML=projectsCache.map(p=>{const id=p.project_id||p.id;const name=p.project_name||p.name||id;const code=p.project_code||p.code||'';return `<option value="${escapeHtml(id)}">${escapeHtml(code+'｜'+name)}</option>`}).join('');if(!projectsCache.length)throw Error('沒有可管理的工地');if(!projectsCache.some(p=>(p.project_id||p.id)===currentProjectId))currentProjectId=projectsCache[0].project_id||projectsCache[0].id;select.value=currentProjectId;invalidateMember()}
+function invalidateMember(){memberLoadedKey=null;el('memberActive').checked=false;document.querySelectorAll('[data-permission]').forEach(x=>x.checked=false);el('saveMember').disabled=true;el('savePerms').disabled=true}
+el('siteSelect').onchange=()=>{currentProjectId=el('siteSelect').value;el('activeSite').value=currentProjectId;load().catch(err=>alert(err.message));invalidateMember();adminMessage('已切換至 '+projectLabel()+'。請重新查詢員工授權。')};
+el('refreshSites').onclick=()=>adminAction(async()=>{await loadSites();adminMessage('已更新工地清單，現在工地：'+projectLabel())});
+el('createSite').onclick=()=>adminAction(async()=>{const code=el('newSiteCode').value.trim().toUpperCase(),name=el('newSiteName').value.trim();if(!/^[A-Z0-9][A-Z0-9_-]{1,29}$/.test(code))throw Error('工地代碼須為 2–30 碼英文大寫、數字、底線或連字號');if(name.length<2||name.length>100)throw Error('工地名稱須為 2–100 字');if(!confirm(`確定新增工地「${name}」(${code})？不會複製 TEST-85 工項。`))return;const d=await adminCall('engineering_admin_create_project',{p_code:code,p_name:name});await loadSites();const id=typeof d==='string'?d:(d?.project_id||d?.id);if(id&&projectsCache.some(p=>(p.project_id||p.id)===id)){currentProjectId=id;el('siteSelect').value=id}invalidateMember();adminMessage(`新增工地完成：${name} (${code})。請從既有員工清單選取成員。`)});
+el('batchAdd').onclick=()=>adminAction(async()=>{const id=projectId();const selected=[...selectedEmployees];if(!selected.length)throw Error('請先勾選員工');const inactive=selected.filter(no=>employeeDirectory.find(e=>e.employee_no===no)?.active===false);if(inactive.length)throw Error('勾選包含已停用員工：'+inactive.join('、'));if(!confirm(`確定將 ${selected.length} 位員工加入「${projectLabel()}」？
+只啟用工地成員資格，不會變更原有功能授權。`))return;let done=[],failed=[];for(const no of selected){try{await adminCall('engineering_set_project_member',{p_project_id:id,p_employee_no:no,p_active:true});done.push(no)}catch(e){failed.push(no+'：'+e.message)}}invalidateMember();adminMessage(`批次加入完成：成功 ${done.length} 位，失敗 ${failed.length} 位。
+成功：${done.join('、')||'無'}
+${failed.length?'失敗：'+failed.join('\n'):'請選取員工查詢核對成員狀態。'}`)});
+const PERMS=[['daily_progress','每日工程進度填報'],['report_view','工程報表查閱'],['chairman_dashboard','工程管理總覽'],['task_manage','工項新增與修改管理'],['issue_manage','工程異常案件管理'],['task_close','工項結案與重新開啟'],['major_issue','重大異常核定與結案'],['project_admin','工地系統管理']];
+el('permissionChecks').innerHTML=PERMS.map(([code,name])=>`<label><input type="checkbox" data-permission="${code}">${name}</label>`).join('');
+const adminMessage=t=>el('adminResult').textContent=t;
+function employee(){const v=el('employeeNo').value.trim();if(!/^\d{4,12}$/.test(v))throw Error('請輸入有效員工編號（4–12 位數字）');return v}
+function checkAdmin(){if(!client||!isAdmin)throw Error('沒有系統管理權限');return projectId()}
+function extractCodes(data){if(Array.isArray(data))return data.map(x=>typeof x==='string'?x:(x.permission_code||x.code)).filter(Boolean);if(data&&Array.isArray(data.permissions))return extractCodes(data.permissions);return []}
+async function adminCall(name,args){const {data,error}=await client.rpc(name,args);if(error)throw Error(`${name}：${error.message}`);return data}
+async function adminAction(fn){try{checkAdmin();adminMessage('處理中…');await fn()}catch(e){adminMessage('操作未完成：'+e.message+'\n若顯示 RPC 參數不符，表示現有資料庫函式簽章與此測試介面不同，請勿反覆提交。')}}
+el('adminToggle').onclick=()=>{if(isAdmin){const opened=el('adminPanel').classList.toggle('open');if(opened)adminAction(async()=>{await loadSites();adminMessage('工地清單已載入。請先選擇工地，再查詢員工授權。')})}};
+el('closeAdmin').onclick=()=>el('adminPanel').classList.remove('open');
+el('employeeNo').oninput=invalidateMember;
+function rowsForProject(data,id){if(Array.isArray(data))return data.filter(x=>x.project_id===id);if(data&&typeof data==='object'&&Array.isArray(data.rows))return data.rows.filter(x=>x.project_id===id);return data&&data.project_id===id?[data]:[]}
+el('readMember').onclick=()=>adminAction(async()=>{invalidateMember();const no=employee(),id=projectId();const d=await adminCall('engineering_get_member_permissions',{p_employee_no:no});const entries=rowsForProject(d,id);const active=entries.some(x=>x.member_active===true);const codes=[...new Set(entries.map(x=>x.permission_code).filter(Boolean))];el('memberActive').checked=active;document.querySelectorAll('[data-permission]').forEach(x=>x.checked=codes.includes(x.dataset.permission));memberLoadedKey=id+'|'+no;el('saveMember').disabled=false;el('savePerms').disabled=false;const role=employeeDirectory.find(e=>e.employee_no===no)?.role_code;adminMessage(`查詢完成：${no} ${EMPLOYEE_NAMES[no]||''}
+工地：${projectLabel()}
+工地成員：${active?'已啟用':'未啟用'}
+系統角色：${ROLE_NAMES[role]||role||'未載入員工主檔'}${role==='admin'?'（管理員角色權限另行生效）':''}
+個別授權：${codes.map(c=>PERMS.find(p=>p[0]===c)?.[1]||c).join('、')||'無'}
+${!entries.length?'此工地目前沒有該員工的成員紀錄。':''}`)});
+function requireLoaded(){const no=employee(),id=projectId();if(memberLoadedKey!==id+'|'+no)throw Error('請先查詢此工地、此員工的授權，確認載入成功後才能儲存');return {no,id}}
+el('saveMember').onclick=()=>adminAction(async()=>{const {no,id}=requireLoaded(),active=el('memberActive').checked;if(!confirm(`確定要${active?'啟用':'停用'}員工 ${no} 在「${projectLabel()}」的工地成員資格？`))return;await adminCall('engineering_set_project_member',{p_project_id:id,p_employee_no:no,p_active:active});invalidateMember();adminMessage('成員狀態已送出，請重新查詢核對。')});
+el('savePerms').onclick=()=>adminAction(async()=>{const {no,id}=requireLoaded(),codes=[...document.querySelectorAll('[data-permission]:checked')].map(x=>x.dataset.permission);if(!confirm(`確定要將員工 ${no} 在「${projectLabel()}」的功能授權改成以下 ${codes.length} 項？
+${codes.join('、')||'全部取消'}`))return;await adminCall('engineering_set_member_permissions',{p_project_id:id,p_employee_no:no,p_permission_codes:codes});invalidateMember();adminMessage('授權修改已送出，請重新查詢核對。')});
+invalidateMember();
+
+init();
+</script></body></html>
