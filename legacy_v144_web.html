@@ -162,7 +162,7 @@ const fields=[['floor','區域／樓層'],['area','施工區域'],['vendor','廠
  function attachmentArea(kind,t){return `<div class="attach-section"><label class="attach-drop" id="drop_${kind}" tabindex="0" ondragover="event.preventDefault();this.classList.add('dragover')" ondragleave="this.classList.remove('dragover')" ondrop="dropFiles(event,'${kind}')"><input type="file" id="file_${kind}" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip" onchange="queueFiles(this.files,'${kind}');this.value=''" hidden><span>📎 拖曳照片／附件至此，或 <u>點選選擇檔案</u></span><small>多檔上傳；單檔建議不超過 8MB，附件保存在本機瀏覽器</small></label><div class="attach-list" id="list_${kind}"></div></div>`}
  function dropFiles(e,kind){e.preventDefault();e.currentTarget.classList.remove('dragover');queueFiles(e.dataTransfer.files,kind)}
  function queueFiles(files,kind){for(const f of files){if(f.size>8*1024*1024){alert(f.name+' 超過單檔 8MB 上限');continue}if(!/^(image\/|application\/pdf$|text\/plain$|application\/zip$|application\/vnd\.|application\/msword$|application\/octet-stream$)/.test(f.type)&&!/\.(pdf|docx?|xlsx?|txt|zip)$/i.test(f.name)){alert(f.name+' 不支援此檔案類型');continue}pendingFiles[kind].push(f)}renderAttachmentList(kind)}
- function attachmentMeta(kind){let t=store.tasks.find(x=>x.id===editTaskId);return (t?.attachments||[]).filter(x=>x.kind===kind&&!pendingDeletes.has(x.key))}
+ function attachmentMeta(kind){let t=store.tasks.find(x=>x.id===editTaskId||x._dbId===editTaskId);return (t?.attachments||[]).filter(x=>x.kind===kind&&!pendingDeletes.has(x.key))}
  function renderAttachmentList(kind){let el=$('list_'+kind);if(!el)return;let saved=attachmentMeta(kind).map(a=>`<div class="attach-item"><button type="button" onclick="viewAttachment('${a.key}')">📄 ${esc(a.name)}</button><span>${esc(a.date||'')} ${esc(a.uploadedAt||'')}</span><button type="button" class="attach-remove" onclick="pendingDeletes.add('${a.key}');renderAttachmentList('${kind}')">移除</button></div>`).join('');let queued=pendingFiles[kind].map((f,i)=>`<div class="attach-item"><span>⏳ ${esc(f.name)}（待儲存）</span><button type="button" class="attach-remove" onclick="pendingFiles['${kind}'].splice(${i},1);renderAttachmentList('${kind}')">移除</button></div>`).join('');el.innerHTML=saved+queued||'<span class="muted">尚無附件</span>'}
  async function viewAttachment(key){try{let blob=await dbGet(key);if(!blob){alert('找不到附件，可能未從備份還原。');return}let a=store.tasks.flatMap(t=>t.attachments||[]).find(x=>x.key===key);if(previewUrl)URL.revokeObjectURL(previewUrl);previewUrl=URL.createObjectURL(blob);let win=window.open(previewUrl,'_blank','noopener,noreferrer');if(!win){let link=document.createElement('a');link.href=previewUrl;link.download=a?.name||'attachment';link.click();alert('瀏覽器已阻擋預覽視窗，已嘗試下載附件。')}}catch(e){alert('開啟附件失敗：'+e.message)}}
  async function savePendingAttachments(task){let list=task.attachments||[];let toRemove=list.filter(a=>pendingDeletes.has(a.key));let additions=[];for(const kind of ['daily','issue'])for(const f of pendingFiles[kind]){let key='a'+Date.now().toString(36)+Math.random().toString(36).slice(2);await dbPut(key,f);additions.push({key,kind,name:f.name,type:f.type,size:f.size,date:dailyDate,uploadedAt:new Date().toLocaleString('zh-TW'),uploader:'本機操作人員'})}task.attachments=list.filter(a=>!pendingDeletes.has(a.key)).concat(additions);for(const a of toRemove)await dbDelete(a.key);return {added:additions.length,removed:toRemove.length}}
@@ -194,7 +194,7 @@ function viewTaskByDbId(dbId){const t=store.tasks.find(x=>x._dbId===dbId);if(!t)
  show(`<h2>工項 #${esc(t.id)}｜${esc(t.area)}</h2><div class="task-detail-meta"><div><b>樓層：</b>${esc(t.floor)}</div><div><b>廠商：</b>${esc(t.vendor)}</div><div><b>工種：</b>${esc(t.trade)}</div><div><b>完成率：</b>${esc(t.progress)}%</div><div><b>今日進度：</b>${esc(t.daily||'—')}</div><div><b>阻礙／缺失：</b>${esc(t.issue||'—')}</div></div><div id="taskPhotoDetail">正在讀取照片…</div>${window.engineeringCanEdit?`<div class="actions"><button class="primary" onclick="editByDbId('${t._dbId}')">編輯工項</button></div>`:''}`);
  cloudAttachments=[];cloudList(t._dbId);
 }
-function editByDbId(dbId){const t=store.tasks.find(x=>x._dbId===dbId);if(!t){alert('找不到工項');return;}edit(t._dbId,true);}
+function editByDbId(dbId){const t=store.tasks.find(x=>String(x._dbId)===String(dbId));if(!t){alert('找不到工項（UUID 未在目前工地資料中），請重新讀取');return;}edit(t._dbId,true);}
 function photoSection(kind,title,task){
  if(!task?._dbId)return `<div class="field wide"><label>${title}</label><p class="muted">請先儲存新工項，才能上傳照片。</p></div>`;
  return `<div class="field wide cloud-photo-section"><label>${title}</label><div class="cloud-photo-drop"><input type="file" id="cloudFiles_${kind}" multiple accept="image/*,.pdf,.txt,.doc,.docx,.xls,.xlsx" onchange="cloudUpload('${kind}')"><div class="muted">可選多張照片；單檔不超過 8MB，上傳後立即保存至 Supabase</div></div><div id="cloudAttachList_${kind}" class="photo-grid">正在讀取照片…</div></div>`;
@@ -202,9 +202,9 @@ function photoSection(kind,title,task){
 function edit(id,byDbId=false){
  if(!window.engineeringCanEdit){alert('目前帳號沒有工項修改權限');return;}
  pendingFiles={daily:[],issue:[]};pendingDeletes=new Set();
- let t=id===null?{id:null,progress:0}:store.tasks.find(x=>byDbId?x._dbId===id:x.id===id);if(!t){alert('找不到工項，請重新讀取資料');return;}
+ let t=id===null?{id:null,progress:0}:store.tasks.find(x=>byDbId?String(x._dbId)===String(id):(x.id===id||String(x._dbId)===String(id)));if(!t){alert('找不到工項，請重新讀取資料');return;}
  // UI edits use the display ID; Supabase writes use the separate UUID (_dbId).
- editTaskId=t.id;
+ editTaskId=t._dbId||t.id;
  if(byDbId)id=t.id;
  const fieldMarkup=fields.map(([k,label,type])=>{
   const input=type==='textarea'?`<textarea id="e_${k}">${esc(t[k])}</textarea>`:`<input id="e_${k}" type="${type||'text'}" value="${esc(t[k])}" ${k==='baseline'&&id!==null?'disabled':''} ${k==='issueCategory'?'list="categories"':''} ${k==='progress'?'min="0" max="100" step="1"':''}>`;
@@ -215,8 +215,8 @@ function edit(id,byDbId=false){
 }
 
 async function saveEdit(id){
- const old=id===null?null:store.tasks.find(x=>x.id===id||x._dbId===id);
- if(id!==null&&!old){alert('找不到工項');return;}
+ const old=id===null?null:store.tasks.find(x=>x._dbId===id||x.id===id);
+ if(id!==null&&!old){alert('找不到工項（儲存識別碼：'+String(id)+'），請重新讀取');return;}
  const t=old?{...old}:{id:null};
  for(const [k] of fields){if(k==='baseline'&&old)continue;t[k]=$('e_'+k).value;}
  t.progress=Number(t.progress);
