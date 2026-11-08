@@ -201,8 +201,10 @@ function photoSection(kind,title,task){
 }
 function edit(id,byDbId=false){
  if(!window.engineeringCanEdit){alert('目前帳號沒有工項修改權限');return;}
- pendingFiles={daily:[],issue:[]};pendingDeletes=new Set();editTaskId=id;
- let t=id===null?{id:null,progress:0}:store.tasks.find(x=>byDbId?x._dbId===id:x.id===id);if(!t)return;
+ pendingFiles={daily:[],issue:[]};pendingDeletes=new Set();
+ let t=id===null?{id:null,progress:0}:store.tasks.find(x=>byDbId?x._dbId===id:x.id===id);if(!t){alert('找不到工項，請重新讀取資料');return;}
+ // UI edits use the display ID; Supabase writes use the separate UUID (_dbId).
+ editTaskId=t.id;
  if(byDbId)id=t.id;
  const fieldMarkup=fields.map(([k,label,type])=>{
   const input=type==='textarea'?`<textarea id="e_${k}">${esc(t[k])}</textarea>`:`<input id="e_${k}" type="${type||'text'}" value="${esc(t[k])}" ${k==='baseline'&&id!==null?'disabled':''} ${k==='issueCategory'?'list="categories"':''} ${k==='progress'?'min="0" max="100" step="1"':''}>`;
@@ -213,7 +215,7 @@ function edit(id,byDbId=false){
 }
 
 async function saveEdit(id){
- const old=id===null?null:store.tasks.find(x=>x.id===id);
+ const old=id===null?null:store.tasks.find(x=>x.id===id||x._dbId===id);
  if(id!==null&&!old){alert('找不到工項');return;}
  const t=old?{...old}:{id:null};
  for(const [k] of fields){if(k==='baseline'&&old)continue;t[k]=$('e_'+k).value;}
